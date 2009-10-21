@@ -1,0 +1,109 @@
+<?php
+/**
+ * Implementaion of hook_menu().
+ */
+function flickr_photoset_menu() {
+  $items['admin/build/block/add-flickr_photoset-block'] = array(
+    'title' => 'Add Flickr photoset block',
+    'description' => 'Add a new Flickr photoset block.',
+    'access arguments' => array('administer blocks'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('flickr_photoset_add_block_form'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'flickr_photoset.admin.inc',
+  );
+  
+  $items['admin/build/block/delete-flickr-photoset'] = array(
+    'title' => 'Delete Flickr photoset block',
+    'access arguments' => array('administer blocks'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('flickr_photoset_delete'),
+    'type' => MENU_CALLBACK,
+    'file' => 'flickr_photoset.admin.inc',
+  );
+  
+  return $items;
+}
+
+/**
+ * Alters the block admin form to add delete links next to menu blocks.
+ */
+function flickr_photoset_form_block_admin_display_form_alter(&$form, $form_state) {
+	module_load_include('inc', 'flickr_photoset', 'flickr_photoset.admin');
+  _flickr_photoset_form_block_admin_display_form_alter($form, $form_state);
+}
+
+/**
+ * Implementation of hook_block().
+ */
+function flickr_photoset_block($op = 'list', $delta = NULL, $edit = NULL) {
+	$function = '_flickr_photoset_block_' . $op;
+  if (function_exists($function)) {
+    return $function($delta, $edit);
+  }
+  else {
+    // "op"s besides "view" are seldom used, so we store them in a separate file.
+    module_load_include('inc', 'flickr_photoset', 'flickr_photoset.admin');
+    if (function_exists($function)) {
+      return $function($delta, $edit);
+    }
+  }
+}
+
+/**
+ * View operation of hook_block().
+ */
+function _flickr_photoset_block_view($delta) {
+	// Get settings
+	$settings = array(
+		'show_n' => variable_get("flickr_photoset_block_{$delta}_show_n", 4),
+		'size' => variable_get("flickr_photoset_block_{$delta}_size", 's'),
+		'photoset_id' => variable_get("flickr_photoset_block_{$delta}_photoset_id", '')
+	);
+	
+	// Return empty if no photoset id has been defined
+	if(empty($settings['photoset_id'])) return '';
+	
+	// Assemble block
+	$block = array();
+	
+	// Block content
+	$block['content'] = _flick_photoset_photoset($delta, $settings);
+	
+	return $block;
+}
+
+/**
+ * Assemble block output.
+ */
+function _flick_photoset_photoset($delta, $settings) {
+	// Include Flickr module
+	module_load_include('inc', 'flickr', 'flickr');
+	module_load_include('module', 'flickr', 'flickr');
+  
+  // Get photoset information
+  $set_info = flickr_photoset_get_info($settings['photoset_id']);
+  
+	// Get photos
+	$set_response = flickr_request('flickr.photosets.getPhotos', array(
+		'photoset_id' => $settings['photoset_id'],
+		'page' => $page,
+		'per_page' => $settings['show_n']
+	));
+	
+	// Check response
+	if (!$set_response) {
+    drupal_set_message(t('Error retrieving :setid\'s photosets from Flickr'), array(':setid', $settings['photoset_id']));
+    return '';
+  }
+  elseif (!isset($set_response['photoset']['photo']) || empty($set_response['photoset']['photo'])) {
+		drupal_set_message('This photoset is empty');
+		return '';
+  }
+  
+  // Theme photos
+  $output .= theme('flickr_photoset', $set_info, $set_info['owner'], $settings['size']);
+  
+  return $output;
+}
+?>

@@ -1,0 +1,27 @@
+<?php
+/**
+ * Implemention of hook_uninstall().
+ */
+function flickr_photoset_uninstall() {
+  // Delete Flickr photoset variables.
+  foreach (variable_get('flickr_photoset_ids', array()) AS $delta) {
+    variable_del("flickr_photoset_block_{$delta}_show_n");
+    variable_del("flickr_photoset_block_{$delta}_pager");
+    variable_del("flickr_photoset_block_{$delta}_size");
+    variable_del("flickr_photoset_block_{$delta}_user_id");
+    variable_del("flickr_photoset_block_{$delta}_photset_id");
+  }
+  variable_del('flickr_photoset_ids');
+  // Remove block configurations.
+  db_query("DELETE FROM {blocks} WHERE module = 'flickr_photoset'");
+  db_query("DELETE FROM {blocks_roles} WHERE module = 'flickr_photoset'");
+  cache_clear_all();
+}
+
+/**
+ * Implementation of hook_install().
+ */
+function flickr_photoset_install() {
+	drupal_set_message(t('To use Flickr photoset, find the "Add Flickr photoset block" tab (or button) on the <a href="@url">administer blocks page</a>.', array('@url' => url('admin/build/block'))));
+}
+?>

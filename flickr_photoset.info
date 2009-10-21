@@ -1,0 +1,7 @@
+name = Flickr Photoset
+description = Provides a block for displaying Flickr photosets.
+dependencies[] = flickr
+dependencies[] = flickr_sets
+package = Flickr
+core = 6.x
+version = "6.x-1.0"
